@@ -3,6 +3,7 @@ name = "window3d"
 version = "0.1.0"
 edition = "2024"
 description = "Lightweight 3D window navigator overlay for Windows"
+license = "MIT"
 
 [dependencies]
 wgpu = { version = "30", default-features = false, features = ["std", "parking_lot", "dx12", "wgsl"] }

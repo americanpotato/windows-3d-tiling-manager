@@ -1,7 +1,7 @@
 # Backlog
 
 Features requested, in implementation order (each step builds on the previous ones). Done items
-move to the README.
+move to docs/GUIDE.md.
 
 ## Next up
 
