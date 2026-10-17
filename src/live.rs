@@ -254,6 +254,8 @@ impl Shared {
 
 /// One Windows.Graphics.Capture session and the staging texture its frames are read through.
 struct Capture {
+    /// A capture of the primary monitor for the desktop card.
+    desktop: bool,
     _item: GraphicsCaptureItem,
     pool: Direct3D11CaptureFramePool,
     session: GraphicsCaptureSession,
@@ -297,6 +299,9 @@ unsafe impl<T> Send for Agile<T> {}
 
 impl Drop for Capture {
     fn drop(&mut self) {
+        if self.desktop {
+            let _ = crate::snip::desktop_capture(false);
+        }
         // Closing a session can take tens of milliseconds: do it off the UI thread.
         let (session, pool) = (self.session.clone(), self.pool.clone());
         std::thread::spawn(move || {
@@ -426,7 +431,7 @@ struct Opened {
 
 /// Opens and starts a capture of `hwnd` (slow: up to ~150 ms per window).
 /// The desktop's card is a capture of the whole primary monitor (the 3D view is left out of
-/// screen captures), so it shows the real screen with its windows, taskbar and popups.
+/// screen captures meanwhile, `snip.rs`), so it shows the real screen with its windows, taskbar and popups.
 fn open(device: &IDirect3DDevice, hwnd: isize) -> Result<Opened> {
     let cap = open_capture(device, hwnd)?;
     Ok(Opened { cap, tray: None, hwnd })
@@ -434,8 +439,9 @@ fn open(device: &IDirect3DDevice, hwnd: isize) -> Result<Opened> {
 
 fn open_capture(device: &IDirect3DDevice, hwnd: isize) -> Result<Capture> {
     let interop = windows::core::factory::<GraphicsCaptureItem, IGraphicsCaptureItemInterop>()?;
+    let desktop = crate::win::is_desktop(crate::win::hwnd_of(hwnd));
     let item: GraphicsCaptureItem = unsafe {
-        if crate::win::is_desktop(crate::win::hwnd_of(hwnd)) {
+        if desktop {
             use windows::Win32::Graphics::Gdi::{MONITOR_DEFAULTTOPRIMARY, MonitorFromPoint};
             interop.CreateForMonitor(MonitorFromPoint(POINT::default(), MONITOR_DEFAULTTOPRIMARY))?
         } else {
@@ -453,7 +459,12 @@ fn open_capture(device: &IDirect3DDevice, hwnd: isize) -> Result<Capture> {
     let _ = session.SetIsCursorCaptureEnabled(false);
     let _ = session.SetIsBorderRequired(false);
     session.StartCapture()?;
+    if desktop {
+        // The 3D view is left out of screen captures while this one is open.
+        let _ = crate::snip::desktop_capture(true);
+    }
     Ok(Capture {
+        desktop,
         _item: item,
         pool,
         session,

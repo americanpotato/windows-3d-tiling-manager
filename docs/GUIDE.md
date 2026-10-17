@@ -21,6 +21,11 @@ It is a navigator, not a window manager: real windows stay where they are on the
 - **Screenshots:** when a window loses focus, it is captured once (`PrintWindow` with
   `PW_RENDERFULLCONTENT`), downscaled to `screenshot_size`, and
   saved as QOI-compressed files under `shots`. Minimized windows that have no screenshot get a card with the app icon.
+- **Screenshots of the 3D view:** Win+Shift+S, PrtScn and Win+PrtScn work in the 3D view, flying or
+  using a window in place. The 3D view is left out of screen captures only while the desktop
+  card captures the screen (so it doesn't show itself); a keyboard hook (`snip.rs`) puts it back
+  in them when a screenshot key is pressed, until the Snipping Tool is done. Other screen
+  recorders and screen sharing see the 3D view except while the desktop card is live.
 - **Overlay:** opening creates the swapchain on a fullscreen window, adds the card textures and
   draws the room. The window being left, and windows that don't have a screenshot yet, are
   captured in the background. Their cards show the previous screenshot (or the app icon) and

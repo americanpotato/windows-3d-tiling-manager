@@ -909,3 +909,30 @@ cropped to the screen's aspect. A bad file logs `background: <path>: can't open 
   The panel is taller (fits the screen at 890 units instead of 800).
 - **How to check**: `--selftest` `menu.png` shows the two rows; change them with Esc, the log
   line "options menu: settings saved" and config.json show the new values.
+
+### Win+Shift+S in the 3D view
+
+- **Symptom**: a Win+Shift+S screenshot in the 3D view showed the windows under it, not the 3D
+  view, and the Snipping Tool taking the foreground ended using a window in place ("in-place
+  use: another window took the foreground (\"XamlWindow\" ...SnippingTool.exe), back to flying").
+- **Cause**: `win::no_capture` gave the 3D view and the pointer window `WDA_EXCLUDEFROMCAPTURE`
+  for the whole run, so the desktop card's monitor capture wouldn't show the 3D view (see
+  "Desktop card: the real screen instead of a bare desktop"). Every screen capture left it out.
+  The Snipping Tool's capture overlay was treated like any other window taking the foreground.
+- **Fix**: `snip.rs`. The windows registered there (`win::no_capture` now calls
+  `snip::register`) are left out of captures only while a desktop card capture is open
+  (`live.rs` `open_capture` / `Capture::drop` call `snip::desktop_capture`; the desktop's
+  `BitBlt` shot in `win::capture_window` does too, waiting 40 ms when that changed something).
+  A low-level keyboard hook on its own thread (`snip::start`, started in `main`) sees Win+Shift+S,
+  PrtScn and Win+PrtScn before the shell does and drops the exclusion at once (from the hook
+  thread: `SetWindowDisplayAffinity` works there). It comes back 2 s later, once the Snipping Tool
+  no longer has the foreground (`snip::active`, checked each loop by `snip::sync` in
+  `App::process_events`). `App::on_foreground` ignores the Snipping Tool taking the foreground
+  (`snip::is_tool`: the process is SnippingTool.exe), and the "focus taken back" timer waits for
+  it. A fullscreen game used in place (ULTRAKILL) still minimizes itself when the Snipping Tool
+  takes the foreground; nothing to do about that from here.
+- **How to check**: log lines "Win+Shift+S: screen captures show the 3D view", "the Snipping Tool
+  took the foreground (...), staying", "screenshot done: the 3D view is left out of captures
+  again while needed". Tested by sending Win+Shift+S with the exclusion forced on (a temporary
+  switch, removed): a screen grab before showed the windows under the 3D view, the Snipping
+  Tool's frozen screen showed the 3D view, and after Esc the grab left it out again.

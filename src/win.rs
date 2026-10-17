@@ -826,7 +826,7 @@ pub fn capture_window(hwnd: HWND, max_side: u32) -> Option<Image> {
             fr = wr;
         }
         // The desktop's card is the whole primary screen, as it is (windows, taskbar, popups);
-        // the 3D view is left out of screen captures (`no_capture`).
+        // the 3D view is left out of screen captures meanwhile (`snip.rs`).
         let desktop = is_desktop(hwnd);
         if desktop {
             fr = primary_rect()?;
@@ -838,9 +838,14 @@ pub fn capture_window(hwnd: HWND, max_side: u32) -> Option<Image> {
         }
         let full = Dib::new(ww, wh)?;
         if desktop {
+            // Left out of captures meanwhile; given a frame to take effect.
+            if crate::snip::desktop_capture(true) {
+                std::thread::sleep(std::time::Duration::from_millis(40));
+            }
             let screen = GetDC(None);
             let ok = BitBlt(full.dc, 0, 0, ww, wh, Some(screen), wr.left, wr.top, SRCCOPY | CAPTUREBLT).is_ok();
             ReleaseDC(None, screen);
+            let _ = crate::snip::desktop_capture(false);
             if !ok {
                 return None;
             }
@@ -1225,10 +1230,10 @@ pub fn is_desktop(hwnd: HWND) -> bool {
 /// The primary monitor's rectangle on the virtual screen.
 /// Leaves window `h` out of every screen capture (it still shows on the monitor), so the
 /// desktop card's capture of the whole screen shows what is under the 3D view, not the view.
-pub fn no_capture(h: isize, what: &str) {
-    if let Err(e) = unsafe { SetWindowDisplayAffinity(hwnd_of(h), WDA_EXCLUDEFROMCAPTURE) } {
-        crate::store::log(&format!("{what} not left out of screen captures: {e}"));
-    }
+/// Leaves window `h` out of screen captures while the desktop card captures the monitor
+/// (see `snip.rs`).
+pub fn no_capture(h: isize, what: &'static str) {
+    crate::snip::register(h, what);
 }
 
 pub fn primary_rect() -> Option<RECT> {

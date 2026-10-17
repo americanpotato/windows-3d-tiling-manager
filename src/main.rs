@@ -21,6 +21,7 @@ mod pointer;
 mod prompt;
 mod render;
 mod selftest;
+mod snip;
 mod stats;
 mod statswin;
 mod store;
@@ -1570,6 +1571,8 @@ impl App {
         if let Some(t) = self.lost {
             if self.focused || overlay::INTERACT.load(std::sync::atomic::Ordering::Relaxed) {
                 self.lost = None;
+            } else if snip::active() {
+                // Not taken back from the Snipping Tool.
             } else if t.elapsed() >= std::time::Duration::from_millis(1200)
                 && unsafe { GetAsyncKeyState(VK_MENU.0 as i32) } >= 0
             {
@@ -1588,6 +1591,12 @@ impl App {
 
     fn on_foreground(&mut self, new: isize) {
         stats::switch_done(new);
+        // Win+Shift+S: the Snipping Tool takes the foreground over the 3D view for a moment;
+        // the user stays where they were (flying, or using a window in place).
+        if self.overlay.is_some() && snip::is_tool(new) {
+            store::log(&format!("the Snipping Tool took the foreground ({}), staying", win::describe(hwnd_of(new))));
+            return;
+        }
         if self.launch_stole(new) {
             self.retake_focus();
         }
@@ -2433,6 +2442,9 @@ impl App {
         self.handle_events();
         // The menu may have closed with the overlay (lock, display change).
         self.sync_menu_mouse();
+
+        // Screenshots: the 3D view back in screen captures once the Snipping Tool is done.
+        let _ = snip::sync();
     }
 
     fn handle_events(&mut self) {
@@ -2709,6 +2721,7 @@ fn main() {
     // Release builds abort on panic with no console: leave the reason in the log.
     pointer::recover();
     win::recover_shell();
+    snip::start();
     std::panic::set_hook(Box::new(|info| {
         pointer::panic_restore();
         win::panic_show_shell();
