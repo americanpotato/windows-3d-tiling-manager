@@ -79,6 +79,9 @@ pub enum Action {
 }
 
 pub use crate::menu::MenuSettings;
+
+/// The key list and the hints over cards and tools are drawn (`show_hints` in the config).
+pub static SHOW_HINTS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 use crate::menu::{Click, Menu};
 
 /// What the crosshair is on.
@@ -3662,6 +3665,7 @@ impl Overlay {
                 ));
             }
         }
+        let hints_on = SHOW_HINTS.load(std::sync::atomic::Ordering::Relaxed);
         let mut hud = vec![
             HudDraw {
                 rect: rect(sw / 2.0, sh / 2.0, self.cross.w, self.cross.h),
@@ -3680,7 +3684,7 @@ impl Overlay {
                     self.help.h,
                 ),
                 // Theater mode keeps the screen for the window.
-                alpha: if parked { 0.0 } else { 0.85 },
+                alpha: if parked || !hints_on { 0.0 } else { 0.85 },
                 tex: self.help.tex,
             },
         ];
@@ -3765,7 +3769,8 @@ impl Overlay {
                 });
             }
         }
-        if self.free {
+        if !hints_on {
+        } else if self.free {
             let hint = &self.hints[5];
             hud.push(HudDraw {
                 rect: rect(sw / 2.0, sh * 0.03 + hint.h / 2.0, hint.w, hint.h),

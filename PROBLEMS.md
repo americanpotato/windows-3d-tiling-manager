@@ -854,3 +854,26 @@ cropped to the screen's aspect. A bad file logs `background: <path>: can't open 
   still come as `WM_DISPLAYCHANGE`.
 - **How to check**: opening on the other monitor (or `M`) logs "3D view: on a monitor with
   another scale (DPI change ignored)" and no `system event Display`; the open stays fast.
+
+### Tray menu "doesn't show up properly" with the 3D view closed (not a bug)
+- **Symptom**: the user thought the tray icon's right-click menu looked wrong with the 3D
+  view closed.
+- **Cause**: none found. Posting `WM_APP_TRAY` with `lParam = WM_RBUTTONUP` to the
+  `Window3DMsg` window showed the full menu within about 60 ms. It opens at the cursor
+  (`tray_menu` uses `GetCursorPos`), so if the mouse moves just after the click, the menu
+  looks offset. The user confirmed it works.
+- **How to check**: from a test script, look for the `#32768` window with
+  `SetProcessDpiAwarenessContext(-4)` set. Without per-monitor awareness, its coordinates and
+  screenshots on the 2nd monitor (different scale) are wrong: that was a dead end here.
+
+### Option to hide the on-screen hints (options menu: "Hints and tooltips")
+- **Symptom**: the user wanted a setting in the Esc options menu to remove the key list at
+  the bottom and the tooltips over cards and tools.
+- **Fix**: new config key `show_hints` (default `true`, `store.rs`) and a row in `menu.rs`
+  (`ROWS`/`SETTINGS` grew by one; `BG_ROW`, `DONE_ROW`, `CLOSE_ROW` moved down). `main.rs`
+  copies it to `overlay::SHOW_HINTS` at startup, on config reload and in `apply_settings`.
+  When it is off, the overlay's frame code gives the help strip alpha 0 and skips the hint
+  block (hover hints, tool tips, the in-place and free-mouse hints). Search and workflow
+  bars still show.
+- **How to check**: Esc, then turn "Hints and tooltips" off, then Esc. No text at the bottom
+  and nothing when hovering a card. `config.json` has `"show_hints": false`.

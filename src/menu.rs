@@ -23,6 +23,7 @@ pub struct MenuSettings {
     pub move_speed: f32,
     pub card_titles: bool,
     pub show_ghosts: bool,
+    pub show_hints: bool,
     /// As `background` in the config.
     pub background: String,
 }
@@ -39,11 +40,11 @@ const PRESETS: [(&str, &str); 7] = [
 ];
 
 /// Rows: the settings, the background grid, Done and Close the 3D view.
-pub const ROWS: usize = 10;
-const SETTINGS: usize = 7;
-const BG_ROW: usize = 7;
-pub const DONE_ROW: usize = 8;
-pub const CLOSE_ROW: usize = 9;
+pub const ROWS: usize = 11;
+const SETTINGS: usize = 8;
+const BG_ROW: usize = 8;
+pub const DONE_ROW: usize = 9;
+pub const CLOSE_ROW: usize = 10;
 const COLS: usize = 5;
 /// Tile rows shown at once (the wheel scrolls the rest).
 const VIS_ROWS: usize = 2;
@@ -343,6 +344,7 @@ impl Menu {
             4 => s.move_speed = (s.move_speed + d).clamp(1.0, 30.0),
             5 => s.card_titles = !s.card_titles,
             6 => s.show_ghosts = !s.show_ghosts,
+            7 => s.show_hints = !s.show_hints,
             _ => {}
         }
         if self.sel == BG_ROW {
@@ -394,7 +396,8 @@ impl Menu {
             3 => ("Mouse sensitivity", format!("{:.1}", s.mouse_sensitivity / 0.0022), false),
             4 => ("Move speed", format!("{:.0}", s.move_speed), false),
             5 => ("Card titles and icons", on(s.card_titles), true),
-            _ => ("Cards of closed apps", on(s.show_ghosts), true),
+            6 => ("Cards of closed apps", on(s.show_ghosts), true),
+            _ => ("Hints and tooltips", on(s.show_hints), true),
         }
     }
 

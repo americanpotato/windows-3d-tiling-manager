@@ -174,6 +174,7 @@ written with defaults on first run. Saved edits apply the next time the 3D view 
 | `move_speed` | `6.0` | metres per second |
 | `fov_degrees` | `70` | vertical field of view |
 | `card_titles` | `false` | title strip (app icon and window title) above window cards |
+| `show_hints` | `true` | on-screen help in the 3D view: the key list at the bottom and the hints over cards and tools (options menu: "Hints and tooltips") |
 | `show_ghosts` | `false` | show cards for closed apps (their spots are remembered either way) |
 | `max_ghosts` | `24` | ghost cards kept (oldest are evicted) |
 | `shortcut_dirs` | `[]` | extra folders scanned for shortcuts |

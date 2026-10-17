@@ -192,6 +192,9 @@ pub struct Config {
     pub stats_fields: Vec<String>,
     /// Title strip (app icon and window title) above each window card's picture.
     pub card_titles: bool,
+    /// On-screen help in the 3D view: the key list at the bottom and the hints shown over
+    /// cards and tools.
+    pub show_hints: bool,
     /// Most frames per second the 3D view draws (0: as many as the monitor shows). Frames
     /// that would look the same as the last one are not drawn at all.
     pub max_fps: u32,
@@ -239,6 +242,7 @@ impl Default for Config {
             show_shortcuts: false,
             stats_fields: STATS_FIELDS.iter().map(|f| f.0.to_string()).collect(),
             card_titles: false,
+            show_hints: true,
             max_fps: 60,
             live_fps: 20,
             background: "room".into(),
