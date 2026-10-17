@@ -805,6 +805,8 @@ cropped to the screen's aspect. A bad file logs `background: <path>: can't open 
   a raise is put on `OVER_BAND` and not tried again.
 - **How to check**: log "desktop used in place: back over <window>" when a menu or Task Manager
   comes up; "(stays over it, given up on)" marks one in a higher band.
+- **Update**: Task Manager is now in the system tools band (16) and stays over a band-1 window
+  whatever is raised; see "Task Manager (Always on top) over the 3D view" below.
 
 ### Per-monitor rooms removed: the 3D view is the same on every monitor
 
@@ -936,3 +938,27 @@ cropped to the screen's aspect. A bad file logs `background: <path>: can't open 
   again while needed". Tested by sending Win+Shift+S with the exclusion forced on (a temporary
   switch, removed): a screen grab before showed the windows under the 3D view, the Snipping
   Tool's frozen screen showed the 3D view, and after Esc the grab left it out again.
+
+### Task Manager (Always on top) over the 3D view
+
+- **Symptom**: "try to fix the task manager thing we had it working before": Task Manager, set
+  "Always on top", showed over the 3D view; the log said `(stays over it, given up on)`.
+- **Cause**: Task Manager's window (`TaskManagerWindow`; `FindWindow` doesn't find it, use
+  `EnumWindows`) is in z-order band 16 (ZBID_SYSTEM_TOOLS, `GetWindowBand`), the 3D view in
+  band 1, and no `SetWindowPos` gets a band-1 window over another band. Taskmgr.exe was updated by
+  Windows on 2026-10-13, which is likely when it moved there. Moving or minimizing it from
+  Window3D fails (access denied, it runs elevated). Scratch tests: user32's undocumented
+  `CreateWindowInBand(..., band)` succeeds from a normal process for band 16 (2 and 5: error 5,
+  15: error 87).
+- **Fix**: `win::create_in_band` (loaded with `GetProcAddress`, falls back to `CreateWindowExW`)
+  creates the 3D view (`main.rs` `create_overlay_window`, not the headless one), the pointer
+  (`pointer.rs`) and the stats window (`statswin.rs`) in band 16. Side effect: the Snipping
+  Tool's capture overlay (`SnipOverlayRootWindow`, band 1) went under the 3D view, so
+  `snip::cloak` (from `snip::sync`) cloaks our registered windows (`DWMWA_CLOAK`) while that
+  overlay is visible during a screenshot; it already holds the frozen capture with the 3D view
+  in it. The Alt+Tab switcher is band 16 too and opens over the view. The taskbar is band 1.
+  The volume flyout and toasts weren't measured (they may open under the view).
+- **How to check**: log `the 3D view: window in z-order band 16` and `the pointer: window in
+  z-order band 16`. With a band-16 stand-in window (scratch `CreateWindowInBand` STATIC) open,
+  the 3D view covers it. Win+Shift+S logs `the Snipping Tool's capture overlay is up: the 3D
+  view is cloaked under it` and its toolbar shows; `... is gone: the 3D view shows again` after.

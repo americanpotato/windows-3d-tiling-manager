@@ -8,6 +8,8 @@ handy now and then, for keeping an eye on several things or laying out a task, b
 Alt+Tab and normal windows are faster for most everyday switching. Treat it as a fun extra
 screen, not a replacement for your desktop.
 
+![Window cards floating over a sunset sea: a game, GitHub in Chrome, a terminal and Notepad](docs/shot.jpg)
+
 ## What it does
 
 - **Hotkey overlay** (Ctrl+Alt+Z, or click the tray icon): every window is a card with its last
@@ -41,9 +43,11 @@ Measured on a laptop with a Ryzen 780M (integrated GPU), 2880x1800.
 ## Known issues
 
 - **The desktop card is the weakest part.** It shows the whole primary screen live and passes
-  clicks through to it. But "always on top" popups (tray menus, tooltips, Task Manager) appear
-  twice, at their real spot over the 3D view and on the card. Start, search and the taskbar
-  can't be covered at all; Windows only lets signed system-level apps above them.
+  clicks through to it. Tray menus and tooltips of other apps can still appear twice, at their
+  real spot over the 3D view and on the card.
+- The 3D view sits in the same top layer as Task Manager's "Always on top", so Task Manager no
+  longer shows over it. Some system pop-ups (volume, notifications) may now open under it
+  instead; the Snipping Tool (Win+Shift+S) is handled.
 - Apps run as administrator can't be controlled from a normal app, so some of their windows and
   menus misbehave in the 3D view.
 - Using a live card in place swaps the system cursors for blank ones and draws the pointer

@@ -320,19 +320,15 @@ unsafe fn create_window() -> isize {
             ..Default::default()
         };
         RegisterClassExW(&wc);
-        CreateWindowExW(
+        // In the 3D view's band, so it shows over it.
+        crate::win::create_in_band(
             WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
             w!("Window3D.Pointer"),
-            None,
+            PCWSTR::null(),
             WS_POPUP,
-            0,
-            0,
-            1,
-            1,
-            None,
-            None,
+            (0, 0, 1, 1),
             Some(hinst),
-            None,
+            "the pointer",
         )
         .map_or(0, |h| {
             crate::win::no_capture(h.0 as isize, "the pointer");

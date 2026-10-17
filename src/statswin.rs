@@ -63,19 +63,15 @@ pub fn toggle(hinstance: HINSTANCE, fields: &[String]) {
         // Fails harmlessly when already registered by an earlier open.
         RegisterClassExW(&wc);
         let x = GetSystemMetrics(SM_CXSCREEN) - W - 24;
-        let Ok(hwnd) = CreateWindowExW(
+        // In the 3D view's band, so it shows over it.
+        let Ok(hwnd) = crate::win::create_in_band(
             WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
             PCWSTR(class.as_ptr()),
             windows::core::w!("Window3D stats"),
             WS_POPUP | WS_BORDER,
-            x,
-            24,
-            W,
-            LINE * 2,
-            None,
-            None,
+            (x, 24, W, LINE * 2),
             Some(hinstance),
-            None,
+            "the stats window",
         ) else {
             return;
         };

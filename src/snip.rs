@@ -4,15 +4,19 @@
 //! card captures the primary monitor (else that capture would show the 3D view inside itself).
 //! A low-level keyboard hook on its own thread sees the screenshot keys before the shell does,
 //! and lets captures see the 3D view at once, until the Snipping Tool is done (the desktop card
-//! may show itself for that while).
+//! may show itself for that while). The 3D view is above the Snipping Tool's capture overlay
+//! (see `win::create_in_band`), so it is cloaked while that is up.
 
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicI32, AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU64, AtomicUsize, Ordering};
+use std::mem::size_of;
 use std::time::Instant;
 
 use windows::Win32::Foundation::*;
+use windows::Win32::Graphics::Dwm::{DWMWA_CLOAK, DwmSetWindowAttribute};
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
+use windows::core::BOOL;
 
 /// Windows of Window3D left out of captures while the desktop card captures the monitor.
 static WINDOWS: Mutex<Vec<(isize, &'static str)>> = Mutex::new(Vec::new());
@@ -22,6 +26,8 @@ static DESKTOP_CAPTURES: AtomicUsize = AtomicUsize::new(0);
 static SNIP_AT: AtomicU64 = AtomicU64::new(0);
 /// What the windows were last given: 0 nothing yet, 1 left out, 2 captured.
 static APPLIED: AtomicI32 = AtomicI32::new(0);
+/// Whether the windows are cloaked, under the Snipping Tool's capture overlay.
+static CLOAKED: AtomicBool = AtomicBool::new(false);
 static START: Mutex<Option<Instant>> = Mutex::new(None);
 
 fn now_ms() -> u64 {
@@ -76,6 +82,7 @@ pub fn active() -> bool {
 /// Gives the windows what they need now. Cheap when nothing changed; called every frame.
 /// Returns whether that changed anything.
 pub fn sync() -> bool {
+    let cloak = cloak();
     let exclude = DESKTOP_CAPTURES.load(Ordering::SeqCst) > 0 && !active();
     let want = if exclude { 1 } else { 2 };
     if APPLIED.swap(want, Ordering::SeqCst) == want {
@@ -89,7 +96,40 @@ pub fn sync() -> bool {
             crate::store::log(&format!("{what}: screen capture setting not changed: {e}"));
         }
     }
-    !wins.is_empty()
+    !wins.is_empty() || cloak
+}
+
+/// The 3D view and our windows over it are in the system tools band (`win::create_in_band`),
+/// above the Snipping Tool's capture overlay (band 1). While that overlay is up (it shows the
+/// screen frozen as captured, with the 3D view in it), they are cloaked so it can be used.
+/// Returns whether that changed.
+fn cloak() -> bool {
+    let up = active() && unsafe {
+        FindWindowW(windows::core::w!("SnipOverlayRootWindow"), None)
+            .is_ok_and(|h| IsWindowVisible(h).as_bool())
+    };
+    if CLOAKED.swap(up, Ordering::SeqCst) == up {
+        return false;
+    }
+    let mut wins = WINDOWS.lock().unwrap_or_else(|e| e.into_inner());
+    wins.retain(|&(h, _)| unsafe { IsWindow(Some(crate::win::hwnd_of(h))).as_bool() });
+    for &(h, _) in wins.iter() {
+        let on = BOOL::from(up);
+        let _ = unsafe {
+            DwmSetWindowAttribute(
+                crate::win::hwnd_of(h),
+                DWMWA_CLOAK,
+                &on as *const BOOL as *const _,
+                size_of::<BOOL>() as u32,
+            )
+        };
+    }
+    crate::store::log(if up {
+        "the Snipping Tool's capture overlay is up: the 3D view is cloaked under it"
+    } else {
+        "the Snipping Tool's capture overlay is gone: the 3D view shows again"
+    });
+    true
 }
 
 unsafe extern "system" fn hook(code: i32, wp: WPARAM, lp: LPARAM) -> LRESULT {

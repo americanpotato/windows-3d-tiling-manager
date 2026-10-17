@@ -1227,15 +1227,65 @@ pub fn is_desktop(hwnd: HWND) -> bool {
     window_class(hwnd) == "Progman"
 }
 
-/// The primary monitor's rectangle on the virtual screen.
-/// Leaves window `h` out of every screen capture (it still shows on the monitor), so the
-/// desktop card's capture of the whole screen shows what is under the 3D view, not the view.
 /// Leaves window `h` out of screen captures while the desktop card captures the monitor
 /// (see `snip.rs`).
 pub fn no_capture(h: isize, what: &'static str) {
     crate::snip::register(h, what);
 }
 
+/// ZBID_SYSTEM_TOOLS: the z-order band of Task Manager's "Always on top", above every app's
+/// "topmost" windows (band 1) and the shell's. User32 lets any process create windows in it.
+const SYSTEM_TOOLS_BAND: u32 = 16;
+
+/// Like `CreateWindowExW`, but in the system tools band (see [`SYSTEM_TOOLS_BAND`]), so that
+/// Task Manager set "Always on top" doesn't show over the 3D view. Falls back to a plain window
+/// (band 1) if `CreateWindowInBand` is missing or refuses. `what` names it in the log.
+#[allow(clippy::too_many_arguments)]
+pub fn create_in_band(
+    ex: WINDOW_EX_STYLE,
+    class: PCWSTR,
+    name: PCWSTR,
+    style: WINDOW_STYLE,
+    (x, y, w, h): (i32, i32, i32, i32),
+    hinst: Option<HINSTANCE>,
+    what: &str,
+) -> windows::core::Result<HWND> {
+    use windows::Win32::System::LibraryLoader::{GetModuleHandleW, GetProcAddress};
+    use windows::core::s;
+    type InBand = unsafe extern "system" fn(
+        WINDOW_EX_STYLE, PCWSTR, PCWSTR, WINDOW_STYLE, i32, i32, i32, i32,
+        HWND, HMENU, HINSTANCE, *const c_void, u32,
+    ) -> HWND;
+    type Band = unsafe extern "system" fn(HWND, *mut u32) -> BOOL;
+    unsafe {
+        if let Ok(user32) = GetModuleHandleW(w!("user32.dll")) {
+            if let Some(f) = GetProcAddress(user32, s!("CreateWindowInBand")) {
+                let f: InBand = std::mem::transmute(f);
+                let hw = f(
+                    ex, class, name, style, x, y, w, h,
+                    HWND::default(), HMENU::default(), hinst.unwrap_or_default(),
+                    std::ptr::null(), SYSTEM_TOOLS_BAND,
+                );
+                if !hw.is_invalid() {
+                    let mut band = 0;
+                    if let Some(g) = GetProcAddress(user32, s!("GetWindowBand")) {
+                        let g: Band = std::mem::transmute(g);
+                        let _ = g(hw, &mut band);
+                    }
+                    crate::store::log(&format!("{what}: window in z-order band {band}"));
+                    return Ok(hw);
+                }
+                crate::store::log(&format!(
+                    "{what}: CreateWindowInBand failed ({:?}), a plain topmost window instead",
+                    GetLastError()
+                ));
+            }
+        }
+        CreateWindowExW(ex, class, name, style, x, y, w, h, None, None, hinst, None)
+    }
+}
+
+/// The primary monitor's rectangle on the virtual screen.
 pub fn primary_rect() -> Option<RECT> {
     unsafe {
         let mon = MonitorFromPoint(POINT::default(), MONITOR_DEFAULTTOPRIMARY);

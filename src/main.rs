@@ -1971,24 +1971,33 @@ impl App {
 
     fn create_overlay_window(&self, x: i32, y: i32, w: i32, h: i32) -> Option<HWND> {
         let class = win::wide(OVERLAY_CLASS);
-        let hwnd = unsafe {
-            CreateWindowExW(
-                if self.headless {
-                    WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
-                } else {
-                    WS_EX_TOPMOST | WS_EX_TOOLWINDOW
-                },
+        let hwnd = if self.headless {
+            unsafe {
+                CreateWindowExW(
+                    WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+                    PCWSTR(class.as_ptr()),
+                    w!("Window3D"),
+                    WS_POPUP,
+                    x,
+                    y,
+                    w,
+                    h,
+                    None,
+                    None,
+                    Some(self.hinstance),
+                    None,
+                )
+            }
+        } else {
+            // In the system tools band: over Task Manager's "Always on top".
+            win::create_in_band(
+                WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
                 PCWSTR(class.as_ptr()),
                 w!("Window3D"),
                 WS_POPUP,
-                x,
-                y,
-                w,
-                h,
-                None,
-                None,
+                (x, y, w, h),
                 Some(self.hinstance),
-                None,
+                "the 3D view",
             )
         };
         match hwnd {
