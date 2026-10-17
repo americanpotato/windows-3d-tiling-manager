@@ -213,6 +213,19 @@ pub fn restore_cursors() {
     }
 }
 
+/// The app under the real cursor hides it (a game's mouse-look): there is no pointer to show,
+/// and the cursor must not be moved or freed (it would appear and jump around).
+pub fn app_hidden() -> bool {
+    let mut ci = CURSORINFO {
+        cbSize: size_of::<CURSORINFO>() as u32,
+        ..Default::default()
+    };
+    unsafe {
+        GetCursorInfo(&mut ci).is_ok()
+            && (ci.flags.0 & CURSOR_SHOWING.0 == 0 || ci.hCursor.is_invalid())
+    }
+}
+
 /// Shows the pointer at `screen` with the shape the window under the real cursor chose.
 pub fn show(screen: POINT) {
     let mut ci = CURSORINFO {

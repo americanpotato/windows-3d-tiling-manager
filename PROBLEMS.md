@@ -877,3 +877,23 @@ cropped to the screen's aspect. A bad file logs `background: <path>: can't open 
   bars still show.
 - **How to check**: Esc, then turn "Hints and tooltips" off, then Esc. No text at the bottom
   and nothing when hovering a card. `config.json` has `"show_hints": false`.
+
+### ULTRAKILL used in place: the cursor flew everywhere while looking around
+
+- **Symptom**: ULTRAKILL (Unity, full screen on the primary monitor) used in place on its card: in
+  mouse-look the cursor appeared and jumped around the screen, and the view stuttered.
+- **Cause**: the edge push in `interact_tick` (`overlay.rs`). The game hides the cursor and pulls it
+  back to its centre itself, but a quick turn reaches the screen edge first; the motion pushing on
+  past it counted as "pushed off the card", so Window3D moved the real cursor (`free_cursor_at`),
+  showed the system cursors again and took the mouse back from the game; coming back onto the card
+  moved it again to the mapped window point. Seen in the log as pairs of "in-place cursor off the
+  card at (1545,976)" / "in-place cursor back onto the card at ... (window point (2879,1200))"
+  every second or two. (So "the real cursor is never moved by us" in "Games that grab the mouse"
+  is not quite true: the edge push moves it.)
+- **Fix**: `pointer::app_hidden` (`GetCursorInfo`: not showing, or no cursor). While the overlay is
+  click-through and the app hides the cursor, `interact_tick` drops the push (its own and the
+  wall's, `wall::set_away(false)`), so the cursor is never moved or freed; `pointer::show` already
+  draws no pointer for a hidden cursor. Leaving is `Esc Esc` as always (or the game's menu, which
+  shows the cursor again).
+- **How to check**: log lines "in-place: the app hides the cursor" / "... shows the cursor"; no
+  "in-place cursor off the card" lines while mouse-looking.

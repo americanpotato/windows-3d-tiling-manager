@@ -148,6 +148,8 @@ struct Interact {
     /// The real cursor went over to another monitor (pushed off the side of the card): it is
     /// free there, and comes back onto the window when it comes back onto this monitor.
     away: bool,
+    /// The app hides the cursor (a game's mouse-look): no pushing off the card, no pointer.
+    hidden: bool,
 }
 
 /// How far (pixels) a held cursor's push past the window's edge is counted.
@@ -2363,6 +2365,7 @@ impl Overlay {
             raw: (0.0, 0.0),
             button: false,
             away: false,
+            hidden: false,
         });
         crate::pointer::hide_cursors();
         INTERACT.store(true, Ordering::Relaxed);
@@ -2960,10 +2963,26 @@ impl Overlay {
         if wall.1 != 0.0 {
             it.push.1 = wall.1;
         }
-        let push = (
+        let mut push = (
             it.push.0.clamp(-PUSH_MAX, PUSH_MAX),
             it.push.1.clamp(-PUSH_MAX, PUSH_MAX),
         );
+        // A game in mouse-look hides the cursor and pulls it back itself; a quick turn reaches
+        // the screen edge first, which must not push the cursor off the card (it would show,
+        // jump and take the mouse from the game).
+        let hidden = it.through && crate::pointer::app_hidden();
+        if hidden != it.hidden {
+            it.hidden = hidden;
+            crate::store::log(&format!(
+                "in-place: the app {} the cursor",
+                if hidden { "hides" } else { "shows" }
+            ));
+        }
+        if hidden {
+            it.push = (0.0, 0.0);
+            push = (0.0, 0.0);
+            crate::wall::set_away(false);
+        }
         slow.mark("shell+push");
         let at = crate::win::window_uv(hwnd, cur);
         let on =
