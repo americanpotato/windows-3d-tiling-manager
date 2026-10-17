@@ -731,6 +731,8 @@ impl App {
         self.cfg = cfg;
         win::CARD_TITLES.store(self.cfg.card_titles, std::sync::atomic::Ordering::Relaxed);
         overlay::SHOW_HINTS.store(self.cfg.show_hints, std::sync::atomic::Ordering::Relaxed);
+        live::LIVE_FPS.store(self.cfg.live_fps, std::sync::atomic::Ordering::Relaxed);
+        live::MAX_FPS.store(self.cfg.max_fps, std::sync::atomic::Ordering::Relaxed);
         self.drop_gpu();
         self.remove_tray();
         self.add_tray();
@@ -753,11 +755,15 @@ impl App {
         self.cfg.card_titles = s.card_titles;
         self.cfg.show_ghosts = s.show_ghosts;
         self.cfg.show_hints = s.show_hints;
+        self.cfg.max_fps = s.max_fps;
+        self.cfg.live_fps = s.live_fps;
         self.cfg.background = s.background;
         store::save_config(&self.cfg);
         self.cfg_stamp = config_stamp();
         win::CARD_TITLES.store(self.cfg.card_titles, std::sync::atomic::Ordering::Relaxed);
         overlay::SHOW_HINTS.store(self.cfg.show_hints, std::sync::atomic::Ordering::Relaxed);
+        live::LIVE_FPS.store(self.cfg.live_fps, std::sync::atomic::Ordering::Relaxed);
+        live::MAX_FPS.store(self.cfg.max_fps, std::sync::atomic::Ordering::Relaxed);
         store::log(&format!(
             "options menu: settings saved (renderer {}, msaa {}){}",
             self.cfg.gpu,
@@ -2290,6 +2296,8 @@ impl App {
             card_titles: self.cfg.card_titles,
             show_ghosts: self.cfg.show_ghosts,
             show_hints: self.cfg.show_hints,
+            max_fps: self.cfg.max_fps,
+            live_fps: self.cfg.live_fps,
             background: self.cfg.background.clone(),
         }
     }

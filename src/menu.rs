@@ -24,6 +24,9 @@ pub struct MenuSettings {
     pub card_titles: bool,
     pub show_ghosts: bool,
     pub show_hints: bool,
+    /// As `max_fps` and `live_fps` in the config (0: no cap).
+    pub max_fps: u32,
+    pub live_fps: u32,
     /// As `background` in the config.
     pub background: String,
 }
@@ -40,11 +43,29 @@ const PRESETS: [(&str, &str); 7] = [
 ];
 
 /// Rows: the settings, the background grid, Done and Close the 3D view.
-pub const ROWS: usize = 11;
-const SETTINGS: usize = 8;
-const BG_ROW: usize = 8;
-pub const DONE_ROW: usize = 9;
-pub const CLOSE_ROW: usize = 10;
+pub const ROWS: usize = 13;
+const SETTINGS: usize = 10;
+const BG_ROW: usize = 10;
+pub const DONE_ROW: usize = 11;
+pub const CLOSE_ROW: usize = 12;
+/// Frame rate caps offered (0: none).
+const MAX_FPS: [u32; 8] = [30, 60, 90, 120, 144, 165, 240, 0];
+const LIVE_FPS: [u32; 7] = [5, 10, 15, 20, 30, 60, 0];
+
+/// The next (or previous) of `steps` after `v` (a value not offered goes to the nearest).
+fn cycle(steps: &[u32], v: u32, up: bool) -> u32 {
+    let key = |x: u32| if x == 0 { u32::MAX } else { x };
+    let n = steps.len();
+    let i = steps
+        .iter()
+        .position(|&x| x == v)
+        .unwrap_or_else(|| steps.iter().position(|&x| key(x) > key(v)).unwrap_or(n - 1));
+    steps[if up { (i + 1) % n } else { (i + n - 1) % n }]
+}
+
+fn fps_label(v: u32, none: &str) -> String {
+    if v == 0 { none.to_string() } else { format!("{v} fps") }
+}
 const COLS: usize = 5;
 /// Tile rows shown at once (the wheel scrolls the rest).
 const VIS_ROWS: usize = 2;
@@ -191,10 +212,10 @@ impl Menu {
     /// A menu on `settings` with renderer choices `gpus`, sized for `text_px` text on a
     /// `screen`-sized overlay.
     pub fn new(settings: MenuSettings, gpus: Vec<String>, text_px: i32, screen: (u32, u32)) -> Menu {
-        // The panel is about 940 x 800 at k = 1; it must fit the screen.
+        // The panel is about 940 x 890 at k = 1; it must fit the screen.
         let k = (text_px as f32 / 17.0)
             .min(screen.0 as f32 * 0.95 / 940.0)
-            .min(screen.1 as f32 * 0.94 / 800.0)
+            .min(screen.1 as f32 * 0.94 / 890.0)
             .max(0.5);
         let mut tiles: Vec<Tile> = PRESETS
             .iter()
@@ -345,6 +366,8 @@ impl Menu {
             5 => s.card_titles = !s.card_titles,
             6 => s.show_ghosts = !s.show_ghosts,
             7 => s.show_hints = !s.show_hints,
+            8 => s.max_fps = cycle(&MAX_FPS, s.max_fps, up),
+            9 => s.live_fps = cycle(&LIVE_FPS, s.live_fps, up),
             _ => {}
         }
         if self.sel == BG_ROW {
@@ -397,7 +420,9 @@ impl Menu {
             4 => ("Move speed", format!("{:.0}", s.move_speed), false),
             5 => ("Card titles and icons", on(s.card_titles), true),
             6 => ("Cards of closed apps", on(s.show_ghosts), true),
-            _ => ("Hints and tooltips", on(s.show_hints), true),
+            7 => ("Hints and tooltips", on(s.show_hints), true),
+            8 => ("Frame rate cap", fps_label(s.max_fps, "None"), false),
+            _ => ("Live cards not in use", fps_label(s.live_fps, "Every frame"), false),
         }
     }
 

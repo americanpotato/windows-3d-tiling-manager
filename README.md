@@ -22,7 +22,7 @@ screen, not a replacement for your desktop.
   without leaving the view.
 - **Backgrounds:** grid room, plain colours, your wallpaper, 360° panoramas or animated skies.
 - **Options menu** (Esc): renderer/GPU, anti-aliasing, field of view, speed, card titles,
-  hints on/off. Esc twice closes the 3D view.
+  hints on/off, frame rate caps. Esc twice closes the 3D view.
 
 ## Performance
 
@@ -33,9 +33,9 @@ Measured on a laptop with a Ryzen 780M (integrated GPU), 2880x1800.
   GPU/driver memory reserved while idle. `keep_surface: false` gives about 100 ms opens for
   about 250 MB; `keep_warm: false` frees everything when closed (about 20 MB idle) and opens in
   about 1 s.
-- **In the view:** capped at 60 fps by default, and frames that wouldn't change aren't drawn.
-  Live cards stream at 20 fps unless in use (the one in use gets every frame); cards out of
-  view stop streaming.
+- **In the view:** about 5% CPU while watching a live card (a YouTube video, say). The GPU
+  only draws frames that change, so a still view costs almost nothing. The frame rate caps are
+  in the options menu (Esc).
 - **Screenshots** are taken once when a window loses focus, downscaled and saved compressed.
 
 ## Known issues
@@ -53,6 +53,9 @@ Measured on a laptop with a Ryzen 780M (integrated GPU), 2880x1800.
   and rebuild it on the next open.
 - Windows only (10 version 2004+ or 11, 64-bit, DirectX 12 GPU). It's a hobby project; expect
   rough edges.
+- You'll run into lots of small, unexpected issues (every app behaves a bit differently in the
+  3D view), so I recommend forking it and fixing the ones you hit. [PROBLEMS.md](PROBLEMS.md)
+  records how each past one was tracked down.
 
 ## Build and run
 

@@ -897,3 +897,15 @@ cropped to the screen's aspect. A bad file logs `background: <path>: can't open 
   shows the cursor again).
 - **How to check**: log lines "in-place: the app hides the cursor" / "... shows the cursor"; no
   "in-place cursor off the card" lines while mouse-looking.
+
+### Frame rate settings in the options menu
+
+- **Symptom**: the frame rate caps (`max_fps`, `live_fps`) could only be changed in config.json,
+  and the README explained them at length.
+- **Fix**: two rows in the options menu (`menu.rs`: "Frame rate cap" cycles `MAX_FPS` 30-240 or
+  none, "Live cards not in use" cycles `LIVE_FPS` 5-60 or every frame; a value not offered steps
+  to the nearest). `App::apply_settings` saves them and stores `live::MAX_FPS` / `live::LIVE_FPS`
+  at once (the frame pacing reads `cfg.max_fps` each frame); a config.json reload stores them too.
+  The panel is taller (fits the screen at 890 units instead of 800).
+- **How to check**: `--selftest` `menu.png` shows the two rows; change them with Esc, the log
+  line "options menu: settings saved" and config.json show the new values.
